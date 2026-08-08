@@ -67,21 +67,66 @@ class LeaderboardSubmit(BaseModel):
     badges: int = 0
 
 
+class MentorRequest(BaseModel):
+    message: str
+    track: Optional[str] = None
+    lesson_title: Optional[str] = None
+    code: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+class MentorResponse(BaseModel):
+    reply: str
+
+
 @api.post("/mentor/chat", response_model=MentorResponse)
 async def mentor_chat(payload: MentorRequest):
-    # Offline rule-based mentor — no API keys, no internet required
+    if EMERGENT_LLM_KEY:
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage
+        except Exception as e:
+            logging.exception("emergentintegrations import failed")
+            raise HTTPException(status_code=500, detail=f"Mentor library unavailable: {e}")
+
+        context_bits = []
+        if payload.track:
+            context_bits.append(f"Track: {payload.track}")
+        if payload.lesson_title:
+            context_bits.append(f"Lesson: {payload.lesson_title}")
+        if payload.code:
+            context_bits.append(f"Current learner code:\n```\n{payload.code[:2500]}\n```")
+        context = "\n".join(context_bits) if context_bits else "(no lesson context)"
+
+        system = (
+            "You are 'ARC', a warm, energetic AI coding mentor inside a gamified IDE that teaches "
+            "React, TypeScript, Node.js and PostgreSQL. Give short, targeted hints — never dump the full "
+            "solution unless the learner explicitly asks for it. Prefer 2-4 sentence answers. "
+            "Use small code snippets in fenced blocks when needed. Be encouraging and gamer-friendly "
+            "(occasional 'nice run!', 'level up incoming' — but keep it professional). "
+            "If the learner asks for the answer, give it, then explain the key concept in one line.\n\n"
+            f"Context:\n{context}"
+        )
+
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=payload.session_id,
+            system_message=system,
+        ).with_model("anthropic", "claude-sonnet-4-6")
+
+        try:
+            reply = await chat.send_message(UserMessage(text=payload.message))
+        except Exception as e:
+            logging.exception("mentor chat failed")
+            raise HTTPException(status_code=500, detail=f"Mentor error: {e}")
+
+        return MentorResponse(reply=str(reply))
+
     msg = payload.message.lower()
     track = (payload.track or "").lower()
-    code_snippet = (payload.code or "")[:500]
 
-    # Context-aware responses
     responses = []
-
-    # Generic encouragement
     if any(w in msg for w in ["hello", "hi", "hey"]):
         responses.append("Hey! I'm ARC — your offline coding mentor. Ask me about React, TypeScript, Node.js, or SQL!")
-    
-    # Hints based on track
     elif "react" in track or "react" in msg:
         if "state" in msg or "usestate" in msg:
             responses.append("In React, `useState` returns `[value, setter]`. Call the setter to trigger a re-render.")
@@ -91,7 +136,6 @@ async def mentor_chat(payload: MentorRequest):
             responses.append("Use `.map()` to transform arrays into JSX. Don't forget a stable `key` prop on each item!")
         else:
             responses.append("React components are just functions that return JSX. Props flow down, state is local.")
-
     elif "typescript" in track or "ts" in msg or "type" in msg:
         if "generic" in msg:
             responses.append("Generics let you write `function id<T>(x: T): T { return x; }` — reusable across types.")
@@ -99,7 +143,6 @@ async def mentor_chat(payload: MentorRequest):
             responses.append("Use `typeof` or discriminant properties (`kind: 'circle'`) to narrow unions safely.")
         else:
             responses.append("TypeScript adds types to JS. Start with `: type` annotations, then let inference do the rest.")
-
     elif "node" in track or "server" in msg or "async" in msg:
         if "promise" in msg or "await" in msg:
             responses.append("`async` functions always return a Promise. Use `await` to unwrap values inside async code.")
@@ -107,7 +150,6 @@ async def mentor_chat(payload: MentorRequest):
             responses.append("Wrap `JSON.parse` in `try/catch` — invalid JSON throws synchronously.")
         else:
             responses.append("Node.js runs JS outside the browser. Use `fs` for files, `http` for servers, and `async/await` for flow control.")
-
     elif "postgres" in track or "sql" in msg or "query" in msg:
         if "join" in msg:
             responses.append("`INNER JOIN` returns rows where both tables match the ON condition. Use table aliases to keep it readable.")
@@ -117,8 +159,6 @@ async def mentor_chat(payload: MentorRequest):
             responses.append("Aggregate functions like `COUNT(*)` collapse rows. Use `GROUP BY` if you need counts per category.")
         else:
             responses.append("SQL reads like English: `SELECT cols FROM table WHERE condition ORDER BY col;`")
-
-    # Code-specific hints
     elif "error" in msg or "bug" in msg or "fix" in msg:
         responses.append("Read the error top-to-bottom. The first line usually tells you exactly what broke and where.")
     elif "hint" in msg or "help" in msg or "stuck" in msg:
@@ -129,8 +169,8 @@ async def mentor_chat(payload: MentorRequest):
         responses.append("Good question. Try writing out what you expect line-by-line, then run it. Errors are just the compiler teaching you.")
 
     reply = " ".join(responses) if responses else "Keep going — you're closer than you think. Break the problem into smaller steps."
-
     return MentorResponse(reply=reply)
+
 
 # ---------- Routes ----------
 @api.get("/")
