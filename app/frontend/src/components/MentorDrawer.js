@@ -3,7 +3,7 @@ import axios from "axios";
 import { MessageCircle, X, Send, Bot } from "lucide-react";
 import { useGame } from "@/context/GameContext";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8001"}/api`;
 
 export default function MentorDrawer({ track, lessonTitle, code }) {
   const { nickname } = useGame();

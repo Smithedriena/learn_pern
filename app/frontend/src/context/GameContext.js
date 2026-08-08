@@ -3,7 +3,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { BADGES, CHALLENGES, levelFromXp } from "@/data/curriculum";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8001"}/api`;
 const STORAGE_KEY = "codequest.progress.v1";
 
 const defaultState = {

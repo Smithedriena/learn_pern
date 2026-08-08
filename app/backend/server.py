@@ -67,17 +67,70 @@ class LeaderboardSubmit(BaseModel):
     badges: int = 0
 
 
-class MentorRequest(BaseModel):
-    session_id: str
-    message: str
-    lesson_title: Optional[str] = None
-    track: Optional[str] = None
-    code: Optional[str] = None
+@api.post("/mentor/chat", response_model=MentorResponse)
+async def mentor_chat(payload: MentorRequest):
+    # Offline rule-based mentor — no API keys, no internet required
+    msg = payload.message.lower()
+    track = (payload.track or "").lower()
+    code_snippet = (payload.code or "")[:500]
 
+    # Context-aware responses
+    responses = []
 
-class MentorResponse(BaseModel):
-    reply: str
+    # Generic encouragement
+    if any(w in msg for w in ["hello", "hi", "hey"]):
+        responses.append("Hey! I'm ARC — your offline coding mentor. Ask me about React, TypeScript, Node.js, or SQL!")
+    
+    # Hints based on track
+    elif "react" in track or "react" in msg:
+        if "state" in msg or "usestate" in msg:
+            responses.append("In React, `useState` returns `[value, setter]`. Call the setter to trigger a re-render.")
+        elif "effect" in msg or "useeffect" in msg:
+            responses.append("`useEffect(() => { ... }, [deps])` runs after render. Return a cleanup function if you subscribe to anything.")
+        elif "list" in msg or "map" in msg:
+            responses.append("Use `.map()` to transform arrays into JSX. Don't forget a stable `key` prop on each item!")
+        else:
+            responses.append("React components are just functions that return JSX. Props flow down, state is local.")
 
+    elif "typescript" in track or "ts" in msg or "type" in msg:
+        if "generic" in msg:
+            responses.append("Generics let you write `function id<T>(x: T): T { return x; }` — reusable across types.")
+        elif "union" in msg or "narrow" in msg:
+            responses.append("Use `typeof` or discriminant properties (`kind: 'circle'`) to narrow unions safely.")
+        else:
+            responses.append("TypeScript adds types to JS. Start with `: type` annotations, then let inference do the rest.")
+
+    elif "node" in track or "server" in msg or "async" in msg:
+        if "promise" in msg or "await" in msg:
+            responses.append("`async` functions always return a Promise. Use `await` to unwrap values inside async code.")
+        elif "json" in msg or "parse" in msg:
+            responses.append("Wrap `JSON.parse` in `try/catch` — invalid JSON throws synchronously.")
+        else:
+            responses.append("Node.js runs JS outside the browser. Use `fs` for files, `http` for servers, and `async/await` for flow control.")
+
+    elif "postgres" in track or "sql" in msg or "query" in msg:
+        if "join" in msg:
+            responses.append("`INNER JOIN` returns rows where both tables match the ON condition. Use table aliases to keep it readable.")
+        elif "index" in msg:
+            responses.append("Indexes speed up reads (especially B-trees) but slow down writes because the index must be updated too.")
+        elif "count" in msg or "sum" in msg:
+            responses.append("Aggregate functions like `COUNT(*)` collapse rows. Use `GROUP BY` if you need counts per category.")
+        else:
+            responses.append("SQL reads like English: `SELECT cols FROM table WHERE condition ORDER BY col;`")
+
+    # Code-specific hints
+    elif "error" in msg or "bug" in msg or "fix" in msg:
+        responses.append("Read the error top-to-bottom. The first line usually tells you exactly what broke and where.")
+    elif "hint" in msg or "help" in msg or "stuck" in msg:
+        responses.append("Try breaking the problem into two parts: what goes in, and what must come out. Write pseudo-code first.")
+    elif "answer" in msg or "solution" in msg:
+        responses.append("I want you to level up — so here's the concept, not just the code: think about the data transformation. Want me to spell it out?")
+    else:
+        responses.append("Good question. Try writing out what you expect line-by-line, then run it. Errors are just the compiler teaching you.")
+
+    reply = " ".join(responses) if responses else "Keep going — you're closer than you think. Break the problem into smaller steps."
+
+    return MentorResponse(reply=reply)
 
 # ---------- Routes ----------
 @api.get("/")
