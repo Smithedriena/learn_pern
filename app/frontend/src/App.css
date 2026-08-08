@@ -1,0 +1,131 @@
+/* CodeQuest — Cyberpunk Gamer Hybrid */
+
+.App {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at top, #0b0b14 0%, #050505 60%);
+    color: #ffffff;
+    font-family: "Outfit", system-ui, sans-serif;
+}
+
+/* subtle grain */
+.App::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/></svg>");
+    opacity: 0.35;
+    z-index: 0;
+}
+
+.neon-green { color: #39FF14; }
+.neon-cyan { color: #00F0FF; }
+.neon-yellow { color: #FFE800; }
+.neon-red { color: #FF003C; }
+.neon-fire { color: #FF5722; }
+
+.glow-green { box-shadow: 0 0 24px rgba(57, 255, 20, 0.35); }
+.glow-cyan  { box-shadow: 0 0 24px rgba(0, 240, 255, 0.35); }
+.glow-yellow{ box-shadow: 0 0 24px rgba(255, 232, 0, 0.35); }
+
+.font-display { font-family: "Unbounded", "Outfit", sans-serif; letter-spacing: -0.02em; }
+.font-mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
+
+.cq-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+}
+
+.cq-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.15rem;
+    border-radius: 999px;
+    font-family: "Unbounded", sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+    cursor: pointer;
+    transition: transform 160ms ease, background-color 160ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.cq-btn:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(255,255,255,0.28); }
+.cq-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cq-btn-primary {
+    background: #39FF14;
+    color: #050505;
+    border-color: #39FF14;
+}
+.cq-btn-primary:hover:not(:disabled) { box-shadow: 0 0 22px rgba(57,255,20,0.55); }
+
+.cq-btn-cyan {
+    background: #00F0FF;
+    color: #050505;
+    border-color: #00F0FF;
+}
+.cq-btn-cyan:hover:not(:disabled) { box-shadow: 0 0 22px rgba(0,240,255,0.55); }
+
+.cq-btn-ghost {
+    background: transparent;
+    border-color: rgba(255,255,255,0.14);
+}
+
+.cq-badge {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.2rem 0.55rem; border-radius: 999px;
+    font-size: 0.7rem; font-family: "JetBrains Mono", monospace;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04);
+    text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.cq-xpbar {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+}
+.cq-xpbar > span {
+    display: block; height: 100%;
+    background: linear-gradient(90deg, #FFE800, #39FF14);
+    transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 12px rgba(255,232,0,0.6);
+}
+
+.cq-link { color: #00F0FF; text-decoration: none; }
+.cq-link:hover { text-decoration: underline; }
+
+.scanlines {
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px);
+}
+
+/* Prose in lesson markdown */
+.cq-prose h1 { font-family: "Unbounded", sans-serif; font-size: 1.75rem; margin: 0 0 0.75rem 0; letter-spacing: -0.02em; }
+.cq-prose h2 { font-family: "Unbounded", sans-serif; font-size: 1.25rem; margin: 1rem 0 0.5rem 0; }
+.cq-prose h3 { font-family: "Unbounded", sans-serif; font-size: 1rem; margin: 0.75rem 0 0.35rem 0; }
+.cq-prose p  { color: #d4d4d8; line-height: 1.7; margin: 0.5rem 0; }
+.cq-prose code { font-family: "JetBrains Mono", monospace; background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; color: #FFE800; }
+.cq-prose pre { background: #0d0d13; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.85rem 1rem; margin: 0.75rem 0; overflow-x: auto; }
+.cq-prose pre code { background: transparent; color: #d1d5db; padding: 0; font-size: 0.85rem; line-height: 1.55; }
+.cq-prose strong { color: #ffffff; }
+.cq-prose ul { padding-left: 1.15rem; color: #d4d4d8; }
+.cq-prose li { margin: 0.25rem 0; }
+
+/* pulsing dot */
+@keyframes pulseDot {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.4); }
+}
+.cq-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; animation: pulseDot 1.6s infinite ease-in-out; }
+
+/* select highlight */
+::selection { background: rgba(57,255,20,0.35); color: #fff; }
+
+/* remove tap highlight on mobile */
+* { -webkit-tap-highlight-color: transparent; }
