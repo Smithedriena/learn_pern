@@ -161,11 +161,3 @@ export function useGame() {
   return ctx;
 }
 
-confetti({ particleCount: 140, spread: 90, origin: { y: 0.6 }, colors: ["#39FF14", "#00F0FF", "#FFE800", "#FF003C"] });
-});
-} catch (_) { /* confetti optional */ }
-}, 200);
-
-if (raw) return { ...defaultState, ...JSON.parse(raw) };
-} catch (_) { /* ignore parse errors */ }
-return defaultState;
