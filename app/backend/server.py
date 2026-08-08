@@ -1,25 +1,50 @@
 from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import uuid
+import aiosqlite
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
-
+DB_PATH = ROOT_DIR / "codequest.db"
 EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
 
-app = FastAPI(title="CodeQuest API")
+
+# ---------- Database setup ----------
+async def init_db():
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS leaderboard (
+                id TEXT PRIMARY KEY,
+                nickname TEXT NOT NULL,
+                nickname_lower TEXT NOT NULL UNIQUE,
+                xp INTEGER NOT NULL DEFAULT 0,
+                level INTEGER NOT NULL DEFAULT 1,
+                streak INTEGER NOT NULL DEFAULT 0,
+                badges INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        await db.commit()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+
+app = FastAPI(title="CodeQuest API", lifespan=lifespan)
 api = APIRouter(prefix="/api")
 
 
@@ -71,27 +96,52 @@ async def submit_score(payload: LeaderboardSubmit):
         streak=max(0, payload.streak),
         badges=max(0, payload.badges),
     )
-    doc = entry.model_dump()
-    # upsert by nickname (case-insensitive)
-    await db.leaderboard.update_one(
-        {"nickname_lower": entry.nickname.lower()},
-        {"$set": {**doc, "nickname_lower": entry.nickname.lower()}},
-        upsert=True,
-    )
+    async with aiosqlite.connect(DB_PATH) as db:
+        # upsert by nickname (case-insensitive)
+        await db.execute(
+            """
+            INSERT INTO leaderboard (id, nickname, nickname_lower, xp, level, streak, badges, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(nickname_lower) DO UPDATE SET
+                id = excluded.id,
+                nickname = excluded.nickname,
+                xp = excluded.xp,
+                level = excluded.level,
+                streak = excluded.streak,
+                badges = excluded.badges,
+                updated_at = excluded.updated_at
+            """,
+            (
+                entry.id,
+                entry.nickname,
+                entry.nickname.lower(),
+                entry.xp,
+                entry.level,
+                entry.streak,
+                entry.badges,
+                entry.updated_at,
+            ),
+        )
+        await db.commit()
     return entry
 
 
 @api.get("/leaderboard", response_model=List[LeaderboardEntry])
 async def get_leaderboard(limit: int = 25):
-    cursor = db.leaderboard.find({}, {"_id": 0, "nickname_lower": 0}).sort("xp", -1).limit(limit)
-    items = await cursor.to_list(length=limit)
-    return items
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT id, nickname, xp, level, streak, badges, updated_at FROM leaderboard ORDER BY xp DESC LIMIT ?",
+            (limit,),
+        )
+        rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
 
 
 @api.post("/mentor/chat", response_model=MentorResponse)
 async def mentor_chat(payload: MentorRequest):
     if not EMERGENT_LLM_KEY:
-        raise HTTPException(status_code=500, detail="Mentor unavailable: missing key")
+        raise HTTPException(status_code=503, detail="Mentor unavailable: set EMERGENT_LLM_KEY to enable")
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
     except Exception as e:
@@ -136,14 +186,9 @@ app.include_router(api)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
