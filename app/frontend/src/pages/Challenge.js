@@ -267,14 +267,3 @@ function deepEqual(a, b) {
   }
   return false;
 }
-
-// Build a function scope: user code declares `function entry(...) {...}` OR arrow.
-const runner = new Function(
-
-
-    function safeStr(v) {
-        try {
-            if (typeof v === "string") return JSON.stringify(v);
-            return JSON.stringify(v);
-        } catch (_e) { return String(v); }
-    }
